@@ -25,5 +25,8 @@ Put this key in Github!
 
 jakobk@gunilla:~$ odoogitclone odoo-account
 
+jakobk@gunilla:~$ cdp
+jakobk@gunilla:/usr/share$ cd odoo-account/
+jakobk@gunilla:/usr/share/odoo-account$ ls
 
 
