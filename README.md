@@ -27,6 +27,15 @@ jakobk@gunilla:~$ odoogitclone odoo-account
 
 jakobk@gunilla:~$ cdp <br>
 jakobk@gunilla:/usr/share$ cd odoo-account/<br>
-jakobk@gunilla:/usr/share/odoo-account$ ls
+jakobk@gunilla:/usr/share/odoo-account$ ls <br>
+
+Expected output:<br>
+jakobk@gunilla:/usr/share/odoo-account$ ls<br>
+LICENSE <br>
+README.md<br>
+account_accountant_ce <br>
+account_admin_rights <br>
+account_analytic_extended  <br> 
+
 
 
