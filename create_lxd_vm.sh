@@ -16,7 +16,7 @@ echo added user
 echo "Please set a password for the user"
 sudo lxc exec "$NAME" -- passwd "$USER"
 
-sudo lxc exec "$NAME" -- mkdir /home/"$"/.ssh
+sudo lxc exec "$NAME" -- mkdir /home/"$USER"/.ssh
 echo added .ssh dir
 
 sudo lxc file push "$PUBKEY" "$NAME"/home/"$USER"/.ssh/authorized_keys
