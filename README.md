@@ -7,8 +7,11 @@ Instructions:
 https://documentation.ubuntu.com/lxd/en/latest/tutorial/ui/
 
 When open in local server, https!! IMPORTANT!
-
-
+* * * *
+Lxd script:
+```
+wget -O create_lxd_vm.sh https://raw.githubusercontent.com/vertelab/orchestra/main/create_lxd_vm.sh
+```
 * * * *
 
 Ubuntu: 22.04
