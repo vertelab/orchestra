@@ -34,17 +34,20 @@ fi
 echo "Odoo Version: $ODOOVERSION"
 echo "Odoo Repo: $ODOOREPO"
 MACHINENAME="${ODOOVERSION}-${ODOOREPO}-$(date +%Y-%m-%d-%H-%M-%S)"
-environment
 echo "$MACHINENAME"
 
 sudo lxc launch ubuntu:"$UBUNTUVERSION" "$MACHINENAME"
+
 echo "Waiting for the machine to receive an IP address..."
 sleep 5
+
 echo "Installing Odoo..."
 sudo lxc exec "$MACHINENAME" -- bash -c "wget -O- https://raw.githubusercontent.com/vertelab/odootools/18.0/install | bash" 
 echo "Odoo installd"
 
 echo "use odootools"
-sudo lxc exec "$MACHINENAME" -- bash -c "/etc/profile.d/odootools.sh; odoogitclone ${ODOOREPO}"; odooaddons; odooreqclone ${SHAREPATH}${ODOOREPO}/requirements.repo; odooallrequirements; odoosetperms"
+sudo lxc exec "$MACHINENAME" -- bash -c 'sudo git clone -b "$VERSION" https://github.com/vertelab/"$ODOOREPO".git'
 
-sudo lxc exec "$MACHINENAME" -- su odoo -c "odoo -c ${ODOO_SERVER_CONF} --database ${ODOOREPO} --init ${ODOOREPO} --stop-after-init"
+sudo lxc exec "$MACHINENAME" -- bash -c '. /etc/profile.d/odootools.sh; odooaddons; odooreqclone "$SHAREPATH""$ODOOREPO"/requirements.repo; odooallrequirements; odoosetperms'
+
+sudo lxc exec "$MACHINENAME" -- su odoo -c 'odoo -c \'"$ODOO_SERVER_CONF" --database "$ODOOREPO" --init "$ODOOREPO" --stop-after-init\''
