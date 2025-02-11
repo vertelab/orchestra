@@ -30,7 +30,11 @@ if [ -z "$UBUNTUVERSION" ]; then
         fi
     done
 fi
- 
+
+ODOOREPOPATH="$SHAREPATH/$ODOOREPO"
+
+echo $ODOOREPOPATH
+
 echo "Odoo Version: $ODOOVERSION"
 echo "Odoo Repo: $ODOOREPO"
 MACHINENAME="${ODOOVERSION}-${ODOOREPO}-$(date +%Y-%m-%d-%H-%M-%S)"
@@ -46,8 +50,10 @@ sudo lxc exec "$MACHINENAME" -- bash -c "wget -O- https://raw.githubusercontent.
 echo "Odoo installd"
 
 echo "use odootools"
-sudo lxc exec "$MACHINENAME" -- bash -c 'sudo git clone -b "$VERSION" https://github.com/vertelab/"$ODOOREPO".git'
+sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git /usr/share/$ODOOREPO"
 
-sudo lxc exec "$MACHINENAME" -- bash -c '. /etc/profile.d/odootools.sh; odooaddons; odooreqclone "$SHAREPATH""$ODOOREPO"/requirements.repo; odooallrequirements; odoosetperms'
+sudo lxc exec "$MACHINENAME" -- bash -c "source /etc/profile.d/odootools.sh && odooaddons && odooallrequirements && odoosetperms"
 
-sudo lxc exec "$MACHINENAME" -- su odoo -c 'odoo -c \'"$ODOO_SERVER_CONF" --database "$ODOOREPO" --init "$ODOOREPO" --stop-after-init\''
+ODOOMODULES=$(sudo lxc exec "$MACHINENAME" -- find /usr/share/"$ODOOREPO" -maxdepth 1 -type d | tr '\n' ',') 
+
+sudo lxc exec "$MACHINENAME" -- su odoo -c "odoo -c $ODOO_SERVER_CONF --database $ODOOREPO --init $ODOOMODULES --stop-after-init"
