@@ -4,6 +4,7 @@ ODOOVERSION=""
 ODOOREPO=""
 UBUNTUVERSION=""
 SHAREPATH="/usr/share"
+ODOOTOOLS="/etc/profile.d/odootools.sh"
 
 usage() { echo "Usage: $0 [-v <odooversion>] [-r <odoorepo>] [-u <ubuntuversion]" 1>&2; exit 1;}
 
@@ -54,11 +55,35 @@ if ! systemctl list-units --full -all | grep -Fq "$service_name.service"; then
 fi 
 echo "Odoo installd"
 
+echo "Cloning repo..."
 
-echo "use odootools"
-sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git $ODOOREPOPATH"
+VERSION="$ODOOVERSION.0"
 
-sudo lxc exec "$MACHINENAME" -- bash -c "source /etc/profile.d/odootools.sh && odooaddons && odooallrequirements && odoosetperms"
+if ! sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git $ODOOREPOPATH"; then
+    echo "Faild to clone repo $ODOOREPO"
+    exit 1
+fi
+
+PYTHONREQ="$ODOOREPOPATH/requirements.txt"
+ODOOEXTREQ="$ODOOREPOPATH/requirements.repo"
+
+echo "Checking for odootools.sh..."
+if [ ! -e "$ODOOTOOLS" ]; then
+    echo "No odootools.sh found"
+    echo "Installing odootools.sh..."
+    sudo lxc exec "$MACHINENAME" -- bash -c "sudo wget -O /etc/profile.d/odootools.sh https://raw.githubusercontent.com/vertelab/odootools/common/odootools.sh"
+fi
+
+echo "using odootools..."
+sudo lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooaddons && odoosetperms"
+
+if [ -e "$ODOOEXTREQ" ]; then
+    sudo lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooreqclone"
+fi
+
+if [ -e "$PYTHONREQ" ]; then
+    sudo lxc exec "$MACHINENAME" -- sudo pip3 install -r "$PYTHONREQ"
+fi
 
 ODOOMODULES=$(sudo lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -maxdepth 1 -type d | tr '\n' ',') 
 
