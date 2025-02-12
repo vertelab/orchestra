@@ -47,13 +47,19 @@ sleep 5
 
 echo "Installing Odoo..."
 sudo lxc exec "$MACHINENAME" -- bash -c "wget -O- https://raw.githubusercontent.com/vertelab/odootools/18.0/install | bash" 
+
+if ! systemctl list-units --full -all | grep -Fq "$service_name.service"; then
+    echo Odoo not installed succefuly
+    exit 1 
+fi 
 echo "Odoo installd"
 
+
 echo "use odootools"
-sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git /usr/share/$ODOOREPO"
+sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git $ODOOREPOPATH"
 
 sudo lxc exec "$MACHINENAME" -- bash -c "source /etc/profile.d/odootools.sh && odooaddons && odooallrequirements && odoosetperms"
 
-ODOOMODULES=$(sudo lxc exec "$MACHINENAME" -- find /usr/share/"$ODOOREPO" -maxdepth 1 -type d | tr '\n' ',') 
+ODOOMODULES=$(sudo lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -maxdepth 1 -type d | tr '\n' ',') 
 
 sudo lxc exec "$MACHINENAME" -- su odoo -c "odoo -c $ODOO_SERVER_CONF --database $ODOOREPO --init $ODOOMODULES --stop-after-init"
