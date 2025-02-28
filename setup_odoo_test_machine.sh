@@ -53,38 +53,38 @@ VERSION="$ODOOVERSION.0"
 
 echo "Creating Ubuntu ${UBUNTUVERSION} for Odoo ${ODOOVERSION}"
 echo "Cheking if machine with Odoo ${ODOOVERSION} Alredy exsists"
-sudo lxc launch "odoo${ODOOVERSION}" "${MACHINENAME}"
+lxc launch "odoo${ODOOVERSION}" "${MACHINENAME}"
 if [[ $? -ne 0 ]]; then
-    sudo lxc launch ubuntu:"$UBUNTUVERSION" "$MACHINENAME"
+    lxc launch ubuntu:"$UBUNTUVERSION" "$MACHINENAME"
 
     echo "Waiting for the machine to receive an IP address..."
     sleep 5
 
-    if [[ -z "$(sudo which pip)" ]]; then
+    if [[ -z $(lxc exec "$MACHINENAME" -- bash -c 'which pip') ]]; then
         echo -e "${YELLOW}No pip installd${NOCOLOR}"
         echo Installing pip for root...
-        wget -O- https://bootstrap.pypa.io/get-pip.py | sudo python3
+        lxc exec "$MACHINENAME" -- bash -c 'wget -O- https://bootstrap.pypa.io/get-pip.py | python3'
     fi
 
     if [ ! -d /root/.config ]; then
-        sudo lxc exec "$MACHINENAME" -- mkdir /root/.config
+        lxc exec "$MACHINENAME" -- mkdir /root/.config
     fi
 
     if [ ! -d /root/.config/pip ]; then
-        sudo lxc exec "$MACHINENAME" -- mkdir /root/.config/pip
+        lxc exec "$MACHINENAME" -- mkdir /root/.config/pip
     fi
 
     echo "Fixing brake-system-pages"
-    sudo lxc exec "$MACHINENAME" -- bash -c "wget -O /root/.config/pip/pip.conf https://raw.githubusercontent.com/vertelab/orchestra/main/pip.conf" 
+    lxc exec "$MACHINENAME" -- bash -c "wget -O /root/.config/pip/pip.conf https://raw.githubusercontent.com/vertelab/orchestra/main/pip.conf" 
 
     echo "Installing Odoo..."
-    sudo lxc exec "$MACHINENAME" -- bash -c "wget -O- https://raw.githubusercontent.com/vertelab/odootools/${VERSION}/install | bash" 
+    lxc exec "$MACHINENAME" -- bash -c "wget -O- https://raw.githubusercontent.com/vertelab/odootools/${VERSION}/install | bash" 
 
     if ! lxc exec "$MACHINENAME" -- systemctl is-active odoo; then
         echo -e "${RED}Failed to install Odoo.${NOCOLOR}"
         exit 1
     fi
-    echo -e "${GREEN}Odoo installd${NOCOLOR}"
+    echo -e "${GREEN}Odoo installd and working${NOCOLOR}"
 
     echo Shutting down machine in order to save it. Please be patient...
     lxc stop "$MACHINENAME" --force
@@ -98,33 +98,33 @@ fi
 sleep 5
 
 echo "Cloning repo..."
-if ! sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git $ODOOREPOPATH"; then
+if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git $ODOOREPOPATH"; then
     echo -e "${RED}Faild to clone repo $ODOOREPO${NOCOLOR}"
     exit 1
 fi
 
 PYTHONREQ="$ODOOREPOPATH/requirements.txt"
 ODOOEXTREQ="$ODOOREPOPATH/requirements.repo"
-ODOOEXTREQFILE=$(sudo lxc exec "$MACHINENAME" -- cat "$ODOOEXTREQ")
+ODOOEXTREQFILE=$(lxc exec "$MACHINENAME" -- cat "$ODOOEXTREQ")
 ODOOEXTREQFILE+=$'\nEOF'
 
 echo "Checking for odootools.sh..."
-if [[ -z "$(sudo lxc exec ${MACHINENAME} -- cat ${ODOOTOOLS})" ]]; then
+if [[ -z "$(lxc exec ${MACHINENAME} -- cat ${ODOOTOOLS})" ]]; then
     echo -e "${YELLOW}No odootools.sh found${NOCOLOR}"
     echo "Installing odootools.sh..."
-    sudo lxc exec "$MACHINENAME" -- bash -c "sudo wget -O $ODOOTOOLS https://raw.githubusercontent.com/vertelab/odootools/common/odootools.sh"
+    lxc exec "$MACHINENAME" -- bash -c "wget -O $ODOOTOOLS https://raw.githubusercontent.com/vertelab/odootools/common/odootools.sh"
 fi
 
 echo "using odootools..."
-sudo lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooaddons && odoosetperm"
+lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooaddons && odoosetperm"
 
-if [[ -n "$(sudo lxc exec ${MACHINENAME} -- cat ${ODOOEXTREQ})" ]]; then
+if [[ -n "$(lxc exec ${MACHINENAME} -- cat ${ODOOEXTREQ})" ]]; then
     echo "Installing dependencies..."
     while IFS=' ' read -r repo_url fs_path 
     do
         repo_url=$(echo "$repo_url" | sed "s|.*:|https://github.com/|") 
         echo "$repo_url"
-        if ! sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION --depth 1  $repo_url $fs_path"; then
+        if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION --depth 1  $repo_url $fs_path"; then
             echo -e "${RED}failed to git clone ${repo_url} ${NOCOLOR}"
         fi
     done <<< "$ODOOEXTREQFILE"
@@ -132,20 +132,23 @@ else
     echo "No dependencies found."
 fi
 
-if [[ -n "$(sudo lxc exec ${MACHINENAME} -- cat ${PYTHONREQ})" ]]; then
+if [[ -n "$(lxc exec ${MACHINENAME} -- cat ${PYTHONREQ})" ]]; then
     echo "Installing python dependencies..."
-    sudo lxc exec "$MACHINENAME" -- sudo pip3 install -r "$PYTHONREQ"
+    lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ"
 else
     echo "No python dependencies found."
 fi
 
-ODOOMODULES=$(sudo lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -maxdepth 1 -type d -not \( -name ".git" \) -printf '%f\n' | tr '\n' ',' | sed 's/,$//')
-USERID=$(sudo lxc exec "$MACHINENAME" -- id -u "odoo")
+ODOOMODULES=$(lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -maxdepth 1 -type d -not \( -name ".git" \) -printf '%f\n' | tr '\n' ',' | sed 's/,$//')
+USERID=$(lxc exec "$MACHINENAME" -- id -u "odoo")
+
+echo "Shutting down Odoo to avoid port conflicts when testing."
+lxc exec "$MACHINENAME" -- systemctl stop odoo.service
 
 echo "Installing odoo modules..."
-sudo lxc exec "$MACHINENAME" --user "$USERID" -- bash -c "odoo -c ${ODOO_SERVER_CONF} --database ${ODOOREPO} --init ${ODOOMODULES} --stop-after-init --test-enable --logfile /var/log/odoo/test-odoo-server.log"
+lxc exec "$MACHINENAME" --user "$USERID" -- bash -c "odoo --config ${ODOO_SERVER_CONF} --database ${ODOOREPO} --init ${ODOOMODULES} --stop-after-init --test-enable --logfile /var/log/odoo/test-odoo-server.log"
 
-CHECK=$(sudo lxc exec "$MACHINENAME" -- cat /var/log/odoo/test-odoo-server.log | grep "CRITICAL")
+CHECK=$(lxc exec "$MACHINENAME" -- cat /var/log/odoo/test-odoo-server.log | grep "CRITICAL")
 
 if [[ -z "$CHECK" ]]; then
     echo -e "${GREEN}Successfully installed and tested modules.${NOCOLOR}"
