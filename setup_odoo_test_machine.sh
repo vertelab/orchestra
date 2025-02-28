@@ -27,7 +27,7 @@ while getopts ":b:p:" option; do
 done
 
 if [ -z "$ODOOVERSION" ] || [ -z "$ODOOREPO" ]; then
-    echo "Both -v (Odoo Version) and -r (Odoo Repo) options are required" >&2
+    echo "Both -b (Odoo Version) and -p (Odoo Repo) options are required" >&2
     usage
 fi
 
@@ -50,7 +50,6 @@ fi
 ODOOREPOPATH="$SHAREPATH/$ODOOREPO"
 MACHINENAME="${ODOOVERSION}-${ODOOREPO}-$(date +%Y-%m-%d-%H-%M-%S)"
 VERSION="$ODOOVERSION.0"
-SAVEUBUNTU=false
 
 echo "Creating Ubuntu ${UBUNTUVERSION} for Odoo ${ODOOVERSION}"
 echo "Cheking if machine with Odoo ${ODOOVERSION} Alredy exsists"
@@ -106,6 +105,8 @@ fi
 
 PYTHONREQ="$ODOOREPOPATH/requirements.txt"
 ODOOEXTREQ="$ODOOREPOPATH/requirements.repo"
+ODOOEXTREQFILE=$(sudo lxc exec "$MACHINENAME" -- cat "$ODOOEXTREQ")
+ODOOEXTREQFILE+=$'\nEOF'
 
 echo "Checking for odootools.sh..."
 if [[ -z "$(sudo lxc exec ${MACHINENAME} -- cat ${ODOOTOOLS})" ]]; then
@@ -119,7 +120,14 @@ sudo lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooaddons && odoo
 
 if [[ -n "$(sudo lxc exec ${MACHINENAME} -- cat ${ODOOEXTREQ})" ]]; then
     echo "Installing dependencies..."
-    sudo lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooreqclone"
+    while IFS=' ' read -r repo_url fs_path 
+    do
+        repo_url=$(echo "$repo_url" | sed "s|.*:|https://github.com/|") 
+        echo "$repo_url"
+        if ! sudo lxc exec "$MACHINENAME" -- bash -c "sudo git clone -b $VERSION --depth 1  $repo_url $fs_path"; then
+            echo -e "${RED}failed to git clone ${repo_url} ${NOCOLOR}"
+        fi
+    done <<< "$ODOOEXTREQFILE"
 else
     echo "No dependencies found."
 fi
@@ -135,7 +143,7 @@ ODOOMODULES=$(sudo lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -
 USERID=$(sudo lxc exec "$MACHINENAME" -- id -u "odoo")
 
 echo "Installing odoo modules..."
-sudo lxc exec "$MACHINENAME" --user "$USERID" -- bash -c "odoo -c ${ODOO_SERVER_CONF} --database ${ODOOREPO} --init ${ODOOMODULES} --stop-after-init --logfile /var/log/odoo/test-odoo-server.log"
+sudo lxc exec "$MACHINENAME" --user "$USERID" -- bash -c "odoo -c ${ODOO_SERVER_CONF} --database ${ODOOREPO} --init ${ODOOMODULES} --stop-after-init --test-enable --logfile /var/log/odoo/test-odoo-server.log"
 
 CHECK=$(sudo lxc exec "$MACHINENAME" -- cat /var/log/odoo/test-odoo-server.log | grep "CRITICAL")
 
