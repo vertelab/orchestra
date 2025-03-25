@@ -31,7 +31,7 @@ with open(file_path, "r", encoding="utf-8") as file:
     warnings = extract_on_message(split_log,"WARNING")
     errors = extract_on_message(split_log, "ERROR")
     criticals = extract_on_message(split_log, "CRITICAL")
-    tracebacks = extract_on_message(split_log, "Traceback")
+    tracebacks = extract_tracebacks(split_log)
     report = {"warnings":warnings, "errors": errors, "criticals": criticals, "tracebacks": tracebacks, "full_log": log}
     print(report)
     file.close()
