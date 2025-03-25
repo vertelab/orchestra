@@ -1,3 +1,5 @@
+import requests, json
+
 file_path = "/var/log/odoo/test-odoo-server.log"
 
 def extract_tracebacks(split_log):
@@ -33,5 +35,12 @@ with open(file_path, "r", encoding="utf-8") as file:
     criticals = extract_on_message(split_log, "CRITICAL")
     tracebacks = extract_tracebacks(split_log)
     report = {"warnings":warnings, "errors": errors, "criticals": criticals, "tracebacks": tracebacks, "full_log": log}
-    print(report)
+    json_report = json.dumps(report)
+
+    headers = {
+    'Content-Type': 'application/json'
+    }
+
+    requests.post("https://vertel.se/project/test/report",data=json_report,headers=headers)
+
     file.close()
