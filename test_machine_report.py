@@ -46,6 +46,6 @@ with open(file_path, "r", encoding="utf-8") as file:
     'Content-Type': 'application/json'
     }
 
-    requests.post("https://vertel.se/project/test/report",data=json_report,headers=headers)
+    requests.post("https://vertel.se/project/ci/report",data=json_report,headers=headers)
 
     file.close()
