@@ -3,6 +3,7 @@
 ODOOVERSION=""
 ODOOREPO=""
 UBUNTUVERSION=""
+CI_BRANCH_ID=""
 SHAREPATH="/usr/share"
 ODOOTOOLS="/etc/profile.d/odootools.sh"
 ODOO_SERVER_CONF="/etc/odoo/odoo.conf"
@@ -15,12 +16,13 @@ NOCOLOR='\033[0m'
 VERSIONS=(8 9 10 11 12 13 14 15 16 17 18 19)
 UBUNTUVERSIONS=(14.04 14.04 18.04 17.04 18.04 20.04 20.04 20.04 22.04 22.04 24.04 24.04)
 
-usage() { echo "Usage: $0 [-b <odooversion>] [-p <odoorepo>]" 1>&2; exit 1;}
+usage() { echo "Usage: $0 [-b <odooversion>] [-p <odoorepo>] [-i optional <cibranchid>]" 1>&2; exit 1;}
 
-while getopts ":b:p:" option; do
+while getopts ":b:p:i:" option; do
     case $option in
         b) ODOOVERSION=${OPTARG} ;;
         p) ODOOREPO=${OPTARG} ;;
+        i) CI_BRANCH_ID=${OPTARG} ;; 
         :) echo "Option -$OPTARG requires an argument" >&2; usage ;;
         \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
     esac
@@ -149,9 +151,15 @@ echo "Installing odoo modules..."
 lxc exec "$MACHINENAME" --user "$USERID" -- bash -c "odoo --config ${ODOO_SERVER_CONF} --database ${ODOOREPO} --init ${ODOOMODULES} --stop-after-init --test-enable --logfile /var/log/odoo/test-odoo-server.log"
 
 CHECK=$(lxc exec "$MACHINENAME" -- cat /var/log/odoo/test-odoo-server.log | grep "CRITICAL")
+IS_SUCCESS=""
 
 if [[ -z "$CHECK" ]]; then
     echo -e "${GREEN}Successfully installed and tested modules.${NOCOLOR}"
+    IS_SUCCESS=true
 else
     echo -e "${RED}Failed to install and test modules.${NOCOLOR}"
+    IS_SUCCESS=false
 fi
+
+lxc exec "$MACHINENAME" -- bash -c 'wget -O /var/log/odoo/test_machine_report.py https://github.com/vertelab/orchestra/raw/refs/heads/main/test_machine_report.py'
+lxc exec "$MACHINENAME" -- bash -c "python3 test_machine_report.py $MACHINENAME $ODOOVERSION $IS_SUCCESS $CI_BRANCH_ID" 

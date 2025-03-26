@@ -1,6 +1,11 @@
-import requests, json
+import requests, json, sys
 
 file_path = "/var/log/odoo/test-odoo-server.log"
+args = sys.argv[1:]
+name = args[0]
+branch = args[1]
+is_success = args[2]
+ci_id = args[3]
 
 def extract_tracebacks(split_log):
     tracebacks = []
@@ -34,7 +39,7 @@ with open(file_path, "r", encoding="utf-8") as file:
     errors = extract_on_message(split_log, "ERROR")
     criticals = extract_on_message(split_log, "CRITICAL")
     tracebacks = extract_tracebacks(split_log)
-    report = {"warnings":warnings, "errors": errors, "criticals": criticals, "tracebacks": tracebacks, "full_log": log}
+    report = {"id":ci_id, "name":name, "warnings":warnings, "errors": errors, "criticals": criticals, "tracebacks": tracebacks, "branch": branch, "is_success":is_success, "full_log": log}
     json_report = json.dumps(report)
 
     headers = {
