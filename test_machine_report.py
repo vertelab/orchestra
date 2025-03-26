@@ -2,10 +2,17 @@ import requests, json, sys
 
 file_path = "/var/log/odoo/test-odoo-server.log"
 args = sys.argv[1:]
-name = args[0]
-branch = args[1]
-is_success = args[2]
-ci_id = args[3]
+name = ""
+branch = ""
+is_success = ""
+ci_id = ""
+try:
+    name = args[0]
+    branch = args[1]
+    is_success = args[2]
+    ci_id = args[3]
+except:
+    pass
 
 def extract_tracebacks(split_log):
     tracebacks = []
@@ -28,7 +35,7 @@ def extract_on_message(split_log, extract_message):
     messages = []
     for line in split_log:
         if extract_message in line:
-            messages.append(line)
+            messages.append(line.strip())
     return messages
 
 with open(file_path, "r", encoding="utf-8") as file:

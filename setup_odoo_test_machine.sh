@@ -162,4 +162,4 @@ else
 fi
 
 lxc exec "$MACHINENAME" -- bash -c 'wget -O /var/log/odoo/test_machine_report.py https://github.com/vertelab/orchestra/raw/refs/heads/main/test_machine_report.py'
-lxc exec "$MACHINENAME" -- bash -c "python3 test_machine_report.py $MACHINENAME $ODOOVERSION $IS_SUCCESS $CI_BRANCH_ID" 
+lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IS_SUCCESS $CI_BRANCH_ID" 
