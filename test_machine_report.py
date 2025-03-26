@@ -46,6 +46,6 @@ with open(file_path, "r", encoding="utf-8") as file:
     'Content-Type': 'application/json'
     }
 
-    requests.post("https://vertel.se/project/ci/report",data=json_report,headers=headers)
+    requests.post("https://3169-94-254-87-194.ngrok-free.app/project/ci/report",data=json_report,headers=headers)
 
     file.close()
