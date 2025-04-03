@@ -143,6 +143,7 @@ fi
 
 ODOOMODULES=$(lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -maxdepth 1 -type d -not \( -name ".git" \) -printf '%f\n' | tr '\n' ',' | sed 's/,$//')
 USERID=$(lxc exec "$MACHINENAME" -- id -u "odoo")
+IP=$(sudo lxc exec "$NAME" -- ip a | grep -Po '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}(?=\/24)')
 
 echo "Shutting down Odoo to avoid port conflicts when testing."
 lxc exec "$MACHINENAME" -- systemctl stop odoo.service
@@ -162,4 +163,4 @@ else
 fi
 
 lxc exec "$MACHINENAME" -- bash -c 'wget -O /var/log/odoo/test_machine_report.py https://github.com/vertelab/orchestra/raw/refs/heads/main/test_machine_report.py'
-lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IS_SUCCESS $CI_BRANCH_ID" 
+lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IP $IS_SUCCESS $CI_BRANCH_ID" 
