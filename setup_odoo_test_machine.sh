@@ -143,7 +143,7 @@ fi
 
 ODOOMODULES=$(lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -maxdepth 1 -type d -not \( -name ".git" \) -printf '%f\n' | tr '\n' ',' | sed 's/,$//')
 USERID=$(lxc exec "$MACHINENAME" -- id -u "odoo")
-IP=$(sudo lxc exec "$NAME" -- ip a | grep -Po '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}(?=\/24)')
+IP=$(lxc exec "$MACHINENAME" -- ip a | grep -Po '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}(?=\/24)')
 
 echo "Shutting down Odoo to avoid port conflicts when testing."
 lxc exec "$MACHINENAME" -- systemctl stop odoo.service
