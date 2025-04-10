@@ -162,5 +162,8 @@ else
     IS_SUCCESS=false
 fi
 
+lxc exec "$MACHINENAME" -- perl -i -pe "s/^admin_passwd.*=.*/admin_passwd = admin/g" "$ODOO_SERVER_CONF"
+lxc exec "$MACHINENAME" -- systemctl start odoo.service
+
 lxc exec "$MACHINENAME" -- bash -c 'wget -O /var/log/odoo/test_machine_report.py https://github.com/vertelab/orchestra/raw/refs/heads/main/test_machine_report.py'
 lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IP $IS_SUCCESS $CI_BRANCH_ID" 
