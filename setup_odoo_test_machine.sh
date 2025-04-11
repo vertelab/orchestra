@@ -4,9 +4,13 @@ ODOOVERSION=""
 ODOOREPO=""
 UBUNTUVERSION=""
 CI_BRANCH_ID=""
+ODOOMODULES=""
+PRIVSSHKEY="${HOME}/.ssh/id_ed25519"
+GITURL="github.com"
 SHAREPATH="/usr/share"
 ODOOTOOLS="/etc/profile.d/odootools.sh"
 ODOO_SERVER_CONF="/etc/odoo/odoo.conf"
+ODOOREQPATH=""
 
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -16,13 +20,16 @@ NOCOLOR='\033[0m'
 VERSIONS=(8 9 10 11 12 13 14 15 16 17 18 19)
 UBUNTUVERSIONS=(14.04 14.04 18.04 17.04 18.04 20.04 20.04 20.04 22.04 22.04 24.04 24.04)
 
-usage() { echo "Usage: $0 [-b <odooversion>] [-p <odoorepo>] [-i optional <cibranchid>]" 1>&2; exit 1;}
+usage() { echo "Usage: $0 [-b <odooversion>] [-p <odoorepo>] [-i optional <cibranchid>] [-m optional <module>] [-g optional <giturl>] [-r optional <reqfileinmodule>]" 1>&2; exit 1;}
 
-while getopts ":b:p:i:" option; do
+while getopts ":b:p:i:m:g:r:" option; do
     case $option in
         b) ODOOVERSION=${OPTARG} ;;
         p) ODOOREPO=${OPTARG} ;;
         i) CI_BRANCH_ID=${OPTARG} ;; 
+        m) ODOOMODULES=${OPTARG} ;; 
+        g) GITURL=${OPTARG} ;; 
+        r) ODOOREQ=${OPTARG} ;; 
         :) echo "Option -$OPTARG requires an argument" >&2; usage ;;
         \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
     esac
@@ -49,6 +56,9 @@ if [ -z "$UBUNTUVERSION" ]; then
     done
 fi
 
+ODOOREQPATH="$ODOOREPOPATH/$ODOOEXTREQ"
+
+echo $GITURL
 ODOOREPOPATH="$SHAREPATH/$ODOOREPO"
 MACHINENAME="${ODOOVERSION}-${ODOOREPO}-$(date +%Y-%m-%d-%H-%M-%S)"
 VERSION="$ODOOVERSION.0"
@@ -99,14 +109,22 @@ fi
 
 sleep 5
 
+lxc file push "$PRIVSSHKEY" "${MACHINENAME}/root/.ssh/"
+lxc exec "$MACHINENAME" -- chown root:root /root/.ssh/ -R
+lxc exec "$MACHINENAME" -- bash -c "ssh-keyscan -H $GITURL > /root/.ssh/known_hosts"
+
 echo "Cloning repo..."
-if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION https://github.com/vertelab/$ODOOREPO.git $ODOOREPOPATH"; then
+if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION git@${GITURL}:vertelab/${ODOOREPO}.git $ODOOREPOPATH"; then
     echo -e "${RED}Faild to clone repo $ODOOREPO${NOCOLOR}"
     exit 1
 fi
 
 PYTHONREQ="$ODOOREPOPATH/requirements.txt"
 ODOOEXTREQ="$ODOOREPOPATH/requirements.repo"
+if [[ -n $ODOOEXTREQ ]]; then
+    PYTHONREQ="$ODOOREQPATH/requirements.txt"
+    ODOOEXTREQ="$ODOOREQPATH/requirements.repo"
+fi
 ODOOEXTREQFILE=$(lxc exec "$MACHINENAME" -- cat "$ODOOEXTREQ")
 ODOOEXTREQFILE+=$'\nEOF'
 
@@ -124,7 +142,7 @@ if [[ -n "$(lxc exec ${MACHINENAME} -- cat ${ODOOEXTREQ})" ]]; then
     echo "Installing dependencies..."
     while IFS=' ' read -r repo_url fs_path 
     do
-        repo_url=$(echo "$repo_url" | sed "s|.*:|https://github.com/|") 
+        #repo_url=$(echo "$repo_url" | sed "s|.*:|https://github.com/|")
         echo "$repo_url"
         if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION --depth 1  $repo_url $fs_path"; then
             echo -e "${RED}failed to git clone ${repo_url} ${NOCOLOR}"
@@ -141,7 +159,9 @@ else
     echo "No python dependencies found."
 fi
 
-ODOOMODULES=$(lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -maxdepth 1 -type d -not \( -name ".git" \) -printf '%f\n' | tr '\n' ',' | sed 's/,$//')
+if [[ -z $ODOOMODULES ]]; then
+    ODOOMODULES=$(lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -maxdepth 1 -type d -not \( -name ".git" \) -printf '%f\n' | tr '\n' ',' | sed 's/,$//')
+fi
 USERID=$(lxc exec "$MACHINENAME" -- id -u "odoo")
 IP=$(lxc exec "$MACHINENAME" -- ip a | grep -Po '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}(?=\/24)')
 
@@ -162,7 +182,7 @@ else
     IS_SUCCESS=false
 fi
 
-lxc exec "$MACHINENAME" -- perl -i -pe "s/^admin_passwd.*=.*/admin_passwd = admin/g" "$ODOO_SERVER_CONF"
+lxc exec "$MACHINENAME" -- bash -c "perl -i -pe 's/^admin_passwd.*=.*/admin_passwd = admin/g' ${ODOO_SERVER_CONF}"
 lxc exec "$MACHINENAME" -- systemctl start odoo.service
 
 lxc exec "$MACHINENAME" -- bash -c 'wget -O /var/log/odoo/test_machine_report.py https://github.com/vertelab/orchestra/raw/refs/heads/main/test_machine_report.py'
