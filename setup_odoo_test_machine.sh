@@ -121,7 +121,7 @@ fi
 
 PYTHONREQ="$ODOOREPOPATH/requirements.txt"
 ODOOEXTREQ="$ODOOREPOPATH/requirements.repo"
-if [[ -n $ODOOEXTREQ ]]; then
+if [[ -n $ODOOREQPATH ]]; then
     PYTHONREQ="$ODOOREQPATH/requirements.txt"
     ODOOEXTREQ="$ODOOREQPATH/requirements.repo"
 fi
