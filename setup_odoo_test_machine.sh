@@ -29,7 +29,7 @@ while getopts ":b:p:i:m:g:r:" option; do
         i) CI_BRANCH_ID=${OPTARG} ;; 
         m) ODOOMODULES=${OPTARG} ;; 
         g) GITURL=${OPTARG} ;; 
-        r) ODOOREQ=${OPTARG} ;; 
+        r) ODOOREQPATH=${OPTARG} ;; 
         :) echo "Option -$OPTARG requires an argument" >&2; usage ;;
         \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
     esac
@@ -56,12 +56,14 @@ if [ -z "$UBUNTUVERSION" ]; then
     done
 fi
 
-ODOOREQPATH="$ODOOREPOPATH/$ODOOEXTREQ"
-
 echo $GITURL
 ODOOREPOPATH="$SHAREPATH/$ODOOREPO"
 MACHINENAME="${ODOOVERSION}-${ODOOREPO}-$(date +%Y-%m-%d-%H-%M-%S)"
 VERSION="$ODOOVERSION.0"
+
+if [ -n $ODOOREQPATH ]; then
+    ODOOREQPATH="$ODOOREPOPATH/$ODOOREQPATH"
+fi
 
 echo "Creating Ubuntu ${UBUNTUVERSION} for Odoo ${ODOOVERSION}"
 echo "Cheking if machine with Odoo ${ODOOVERSION} Alredy exsists"
@@ -111,7 +113,10 @@ sleep 5
 
 lxc file push "$PRIVSSHKEY" "${MACHINENAME}/root/.ssh/"
 lxc exec "$MACHINENAME" -- chown root:root /root/.ssh/ -R
-lxc exec "$MACHINENAME" -- bash -c "ssh-keyscan -H $GITURL > /root/.ssh/known_hosts"
+lxc exec "$MACHINENAME" -- bash -c "ssh-keyscan -H github.com > /root/.ssh/known_hosts"
+if [ -n $GITURL ]; then
+    lxc exec "$MACHINENAME" -- bash -c "ssh-keyscan -H $GITURL >> /root/.ssh/known_hosts"
+fi
 
 echo "Cloning repo..."
 if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION git@${GITURL}:vertelab/${ODOOREPO}.git $ODOOREPOPATH"; then
@@ -126,7 +131,7 @@ if [[ -n $ODOOREQPATH ]]; then
     ODOOEXTREQ="$ODOOREQPATH/requirements.repo"
 fi
 ODOOEXTREQFILE=$(lxc exec "$MACHINENAME" -- cat "$ODOOEXTREQ")
-ODOOEXTREQFILE+=$'\nEOF'
+readarray -t ODOOEXTREQFILEARRAY <<< $ODOOEXTREQFILE
 
 echo "Checking for odootools.sh..."
 if [[ -z "$(lxc exec ${MACHINENAME} -- cat ${ODOOTOOLS})" ]]; then
@@ -135,26 +140,28 @@ if [[ -z "$(lxc exec ${MACHINENAME} -- cat ${ODOOTOOLS})" ]]; then
     lxc exec "$MACHINENAME" -- bash -c "wget -O $ODOOTOOLS https://raw.githubusercontent.com/vertelab/odootools/common/odootools.sh"
 fi
 
-echo "using odootools..."
-lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooaddons && odoosetperm"
-
 if [[ -n "$(lxc exec ${MACHINENAME} -- cat ${ODOOEXTREQ})" ]]; then
     echo "Installing dependencies..."
-    while IFS=' ' read -r repo_url fs_path 
+    for line in "${ODOOEXTREQFILEARRAY[@]}"; 
     do
-        #repo_url=$(echo "$repo_url" | sed "s|.*:|https://github.com/|")
+        IFS=' ' read -r repo_url repo_path <<< "$line"
         echo "$repo_url"
-        if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION --depth 1  $repo_url $fs_path"; then
+        if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION --depth 1  $repo_url $repo_path"; then
             echo -e "${RED}failed to git clone ${repo_url} ${NOCOLOR}"
         fi
-    done <<< "$ODOOEXTREQFILE"
+    done
 else
     echo "No dependencies found."
 fi
 
+echo "using odootools..."
+lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooaddons && odoosetperm"
+
 if [[ -n "$(lxc exec ${MACHINENAME} -- cat ${PYTHONREQ})" ]]; then
     echo "Installing python dependencies..."
-    lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ"
+    if ! lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ"; then
+        lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ" --ignore-installed;
+    fi
 else
     echo "No python dependencies found."
 fi
