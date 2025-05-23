@@ -61,7 +61,7 @@ ODOOREPOPATH="$SHAREPATH/$ODOOREPO"
 MACHINENAME="${ODOOVERSION}-${ODOOREPO}-$(date +%Y-%m-%d-%H-%M-%S)"
 VERSION="$ODOOVERSION.0"
 
-if [ -n $ODOOREQPATH ]; then
+if [ -n "$ODOOREQPATH" ]; then
     ODOOREQPATH="$ODOOREPOPATH/$ODOOREQPATH"
 fi
 
@@ -114,7 +114,7 @@ sleep 5
 lxc file push "$PRIVSSHKEY" "${MACHINENAME}/root/.ssh/"
 lxc exec "$MACHINENAME" -- chown root:root /root/.ssh/ -R
 lxc exec "$MACHINENAME" -- bash -c "ssh-keyscan -H github.com > /root/.ssh/known_hosts"
-if [ -n $GITURL ]; then
+if [ -n "$GITURL" ]; then
     lxc exec "$MACHINENAME" -- bash -c "ssh-keyscan -H $GITURL >> /root/.ssh/known_hosts"
 fi
 
@@ -126,7 +126,7 @@ fi
 
 PYTHONREQ="$ODOOREPOPATH/requirements.txt"
 ODOOEXTREQ="$ODOOREPOPATH/requirements.repo"
-if [[ -n $ODOOREQPATH ]]; then
+if [[ -n "$ODOOREQPATH" ]]; then
     PYTHONREQ="$ODOOREQPATH/requirements.txt"
     ODOOEXTREQ="$ODOOREQPATH/requirements.repo"
 fi
@@ -140,33 +140,63 @@ if [[ -z "$(lxc exec ${MACHINENAME} -- cat ${ODOOTOOLS})" ]]; then
     lxc exec "$MACHINENAME" -- bash -c "wget -O $ODOOTOOLS https://raw.githubusercontent.com/vertelab/odootools/common/odootools.sh"
 fi
 
-if [[ -n "$(lxc exec ${MACHINENAME} -- cat ${ODOOEXTREQ})" ]]; then
-    echo "Installing dependencies..."
-    for line in "${ODOOEXTREQFILEARRAY[@]}"; 
-    do
-        IFS=' ' read -r repo_url repo_path <<< "$line"
-        echo "$repo_url"
-        if ! lxc exec "$MACHINENAME" -- bash -c "git clone -b $VERSION --depth 1  $repo_url $repo_path"; then
-            echo -e "${RED}failed to git clone ${repo_url} ${NOCOLOR}"
-        fi
-    done
-else
-    echo "No dependencies found."
-fi
+function install_dependencies() {
+    local repo_lines=("$@")
+    echo $repo_lines
+    if lxc exec "$MACHINENAME" -- bash -c "[[ -s $ODOOEXTREQ ]]"; then
+        echo "Installing dependencies..."
+        for line in "${repo_lines[@]}"; do
+            IFS=' ' read -r repo_url repo_path <<< "$line"
+            echo "Cloning $repo_url"
+            if ! lxc exec "$MACHINENAME" -- bash -c \
+                "git clone -b $VERSION --depth 1 $repo_url $repo_path"; then
+                echo -e "${RED}Failed to clone $repo_url ${NOCOLOR}"
+                continue
+            fi
+            new_deps=$(lxc exec ${MACHINENAME} -- bash -c "cat ${repo_path}/requirements.repo 2> /dev/null")
+            if [[ -n "$new_deps" ]]; then
+                readarray -t new_deps_array <<< $new_deps
+                install_dependencies "${new_deps_array[@]}"
+            fi 
+        done
+    else
+        echo "No dependencies found."
+    fi
+}
+
+install_dependencies "${ODOOEXTREQFILEARRAY[@]}"
 
 echo "using odootools..."
 lxc exec "$MACHINENAME" -- bash -c "source $ODOOTOOLS && odooaddons && odoosetperm"
 
-if [[ -n "$(lxc exec ${MACHINENAME} -- cat ${PYTHONREQ})" ]]; then
-    echo "Installing python dependencies..."
-    if ! lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ"; then
-        lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ" --ignore-installed;
+if [[ -n "$ODOOREQPATH" ]]; then
+    checkreq=$(lxc exec ${MACHINENAME} -- bash -c "cat ${pythonreq} 2> /dev/null")
+    if [[ -n "$checkreq" ]]; then
+        echo "Installing python dependencies..."
+        if ! lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ"; then
+            lxc exec "$MACHINENAME" -- pip3 install -r "$PYTHONREQ" --ignore-installed;
+        fi
+    else
+        echo "No python dependencies found"
     fi
 else
-    echo "No python dependencies found."
+    readarray -t ADDONS <<< $(lxc exec "$MACHINENAME" -- bash -c "ls -d /usr/share/odoo-* /usr/share/odooext-* /usr/src/OCB/addons 2> /dev/null | grep -v odoo-addons")
+    for ADDON in "${ADDONS[@]}"; do
+        IFS=" " read -r repo <<< $ADDON
+        pythonreq="${repo}/requirements.txt"
+        checkreq=$(lxc exec ${MACHINENAME} -- bash -c "cat ${pythonreq} 2> /dev/null")
+        if [[ -n "$checkreq" ]]; then
+            echo "Installing python dependencies for $repo"
+            if ! lxc exec "$MACHINENAME" -- pip3 install -r "$pythonreq"; then
+                lxc exec "$MACHINENAME" -- pip3 install -r "$pythonreq" --ignore-installed;
+            fi
+        else
+            echo "No python dependencies found for $repo."
+        fi
+    done
 fi
 
-if [[ -z $ODOOMODULES ]]; then
+if [[ -z "$ODOOMODULES" ]]; then
     ODOOMODULES=$(lxc exec "$MACHINENAME" -- find "$ODOOREPOPATH" -mindepth 1 -maxdepth 1 -type d -not \( -name ".git" \) -printf '%f\n' | tr '\n' ',' | sed 's/,$//')
 fi
 USERID=$(lxc exec "$MACHINENAME" -- id -u "odoo")
