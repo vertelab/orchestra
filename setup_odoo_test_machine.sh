@@ -11,6 +11,7 @@ SHAREPATH="/usr/share"
 ODOOTOOLS="/etc/profile.d/odootools.sh"
 ODOO_SERVER_CONF="/etc/odoo/odoo.conf"
 ODOOREQPATH=""
+RETURNURL=""
 
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -20,7 +21,7 @@ NOCOLOR='\033[0m'
 VERSIONS=(8 9 10 11 12 13 14 15 16 17 18 19)
 UBUNTUVERSIONS=(14.04 14.04 18.04 17.04 18.04 20.04 20.04 20.04 22.04 22.04 24.04 24.04)
 
-usage() { echo "Usage: $0 [-b <odooversion>] [-p <odoorepo>] [-i optional <cibranchid>] [-m optional <module>] [-g optional <giturl>] [-r optional <reqfileinmodule>]" 1>&2; exit 1;}
+usage() { echo "Usage: $0 [-b <odooversion>] [-p <odoorepo>] [-i optional <cibranchid>] [-m optional <module>] [-g optional <giturl>] [-r optional <reqfileinmodule>] [-u optional <returnurl>]" 1>&2; exit 1;}
 
 while getopts ":b:p:i:m:g:r:" option; do
     case $option in
@@ -30,6 +31,7 @@ while getopts ":b:p:i:m:g:r:" option; do
         m) ODOOMODULES=${OPTARG} ;; 
         g) GITURL=${OPTARG} ;; 
         r) ODOOREQPATH=${OPTARG} ;; 
+        u) RETURNURL=${OPTARG} ;; 
         :) echo "Option -$OPTARG requires an argument" >&2; usage ;;
         \?) echo "Invalid option: -$OPTARG" >&2; usage ;;
     esac
@@ -223,4 +225,4 @@ lxc exec "$MACHINENAME" -- bash -c "perl -i -pe 's/^admin_passwd.*=.*/admin_pass
 lxc exec "$MACHINENAME" -- systemctl start odoo.service
 
 lxc exec "$MACHINENAME" -- bash -c 'wget -O /var/log/odoo/test_machine_report.py https://github.com/vertelab/orchestra/raw/refs/heads/main/test_machine_report.py'
-lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IP $IS_SUCCESS $CI_BRANCH_ID" 
+lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IP $IS_SUCCESS $CI_BRANCH_ID $RETURNURL" 
