@@ -6,12 +6,14 @@ name = ""
 branch = ""
 is_success = ""
 ci_id = ""
+return_url = ""
 try:
     name = args[0]
     branch = args[1]
     ip = args[2]
     is_success = args[3]
     ci_id = args[4]
+    return_url = args[5]
 except:
     pass
 
@@ -39,6 +41,10 @@ def extract_on_message(split_log, extract_message):
             messages.append(line.strip())
     return messages
 
+def create_local_report(report):
+    with open("./json_report.txt", "w+", encoding="utf-8") as file:
+        file.write(report)
+
 with open(file_path, "r", encoding="utf-8") as file:
 
     log = file.read()
@@ -50,10 +56,13 @@ with open(file_path, "r", encoding="utf-8") as file:
     report = {"id":ci_id, "name":name, "warnings":warnings, "errors": errors, "criticals": criticals, "tracebacks": tracebacks, "ip_address":ip, "branch": branch, "is_success":is_success, "full_log": log}
     json_report = json.dumps(report)
 
-    headers = {
-    'Content-Type': 'application/json'
-    }
-
-    requests.post("https://vertel.se/project/ci/report",data=json_report,headers=headers)
-
-    file.close()
+    if return_url:
+        headers = {
+        'Content-Type': 'application/json'
+        }
+        try:
+            requests.post("https://vertel.se/project/ci/report",data=json_report,headers=headers)
+        except Exception as e:
+            print(f"{e=}")
+            
+    create_local_report(json_report)
