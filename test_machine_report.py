@@ -61,7 +61,7 @@ with open(file_path, "r", encoding="utf-8") as file:
         'Content-Type': 'application/json'
         }
         try:
-            requests.post("https://vertel.se/project/ci/report",data=json_report,headers=headers)
+            requests.post(f"{return_url}/project/ci/report",data=json_report,headers=headers)
         except Exception as e:
             print(f"{e=}")
             
