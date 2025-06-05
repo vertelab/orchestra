@@ -23,7 +23,7 @@ UBUNTUVERSIONS=(14.04 14.04 18.04 17.04 18.04 20.04 20.04 20.04 22.04 22.04 24.0
 
 usage() { echo "Usage: $0 [-b <odooversion>] [-p <odoorepo>] [-i optional <cibranchid>] [-m optional <module>] [-g optional <giturl>] [-r optional <reqfileinmodule>] [-u optional <returnurl>]" 1>&2; exit 1;}
 
-while getopts ":b:p:i:m:g:r:" option; do
+while getopts ":b:p:i:m:g:r:u:" option; do
     case $option in
         b) ODOOVERSION=${OPTARG} ;;
         p) ODOOREPO=${OPTARG} ;;
