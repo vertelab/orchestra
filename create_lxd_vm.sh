@@ -12,10 +12,7 @@ elif [ -f "$SSHDIR/id_ed25519.pub" ]; then
     PUBKEY="$SSHDIR/id_ed25519.pub"
 fi
 
-lxc launch ubuntu:"$UBUNTUVERSION" "$NAME" -d root,size=20GiB --vm
-
-echo waiting...
-sleep 30
+lxc launch ubuntu:"$UBUNTUVERSION" "$NAME"
 
 lxc exec "$NAME" -- useradd -m -G sudo -s /bin/bash "$USER"
 echo added user
