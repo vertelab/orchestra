@@ -31,7 +31,7 @@ fi
 
 echo Adding ip address to host and config file 
 VMIP=$(lxc exec "$NAME" -- ip a | grep -Po '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}(?=\/24)')
-if [ ! -d "${SSHDIR}/config" ]; then
+if [ ! -f "${SSHDIR}/config" ]; then
     echo -e "\nHost $NAME\n  HostName $VMIP\n  ForwardAgent yes" > "$SSHDIR"/config
 else
     echo -e "\nHost $NAME\n  HostName $VMIP\n  ForwardAgent yes" >> "$SSHDIR"/config
