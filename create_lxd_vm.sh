@@ -31,6 +31,10 @@ fi
 
 echo Adding ip address to host and config file 
 VMIP=$(lxc exec "$NAME" -- ip a | grep -Po '\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}(?=\/24)')
+if [[ ! $VMIP ]]; then
+    echo -e "ERROR: Unable to get HostName\nAddition of ip address was NOT successful!"
+    return 1
+fi
 if [ ! -f "${SSHDIR}/config" ]; then
     echo -e "\nHost $NAME\n  HostName $VMIP\n  ForwardAgent yes" > "$SSHDIR"/config
 else
