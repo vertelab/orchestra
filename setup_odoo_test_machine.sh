@@ -58,9 +58,11 @@ if [ -z "$UBUNTUVERSION" ]; then
     done
 fi
 
+ODOOREPONOUNDERSCORE="${ODOOREPO//_/-}"
+
 echo $GITURL
 ODOOREPOPATH="$SHAREPATH/$ODOOREPO"
-MACHINENAME="${ODOOVERSION}-${ODOOREPO}-$(date +%Y-%m-%d-%H-%M-%S)"
+MACHINENAME="${ODOOVERSION}-${ODOOREPONOUNDERSCORE}-$(date +%Y-%m-%d-%H-%M-%S)"
 VERSION="$ODOOVERSION.0"
 
 if [ -n "$ODOOREQPATH" ]; then
@@ -225,4 +227,4 @@ lxc exec "$MACHINENAME" -- bash -c "perl -i -pe 's/^admin_passwd.*=.*/admin_pass
 lxc exec "$MACHINENAME" -- systemctl start odoo.service
 
 lxc exec "$MACHINENAME" -- bash -c 'wget -O /var/log/odoo/test_machine_report.py https://github.com/vertelab/orchestra/raw/refs/heads/main/test_machine_report.py'
-lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IP $IS_SUCCESS $CI_BRANCH_ID $RETURNURL" 
+lxc exec "$MACHINENAME" -- bash -c "python3 /var/log/odoo/test_machine_report.py $MACHINENAME $ODOOVERSION $IP $IS_SUCCESS $CI_BRANCH_ID $RETURNURL"
